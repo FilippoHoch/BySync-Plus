@@ -38,22 +38,33 @@ def app_dir() -> Path:
     return Path(__file__).resolve().parent
 
 def human_bytes(n: int) -> str:
+    """Return ``n`` expressed using human readable units.
+
+    Parameters
+    ----------
+    n: int
+        Size in bytes that will be converted.
+    """
     neg = n < 0
     n = abs(n)
-    for unit in ["B","KB","MB","GB","TB","PB"]:
+    for unit in ["B", "KB", "MB", "GB", "TB", "PB"]:
         if n < 1024 or unit == "PB":
-            s = f"{n:.1f} {unit}" if unit!="B" else f"{int(n)} {unit}"
+            s = f"{n:.1f} {unit}" if unit != "B" else f"{int(n)} {unit}"
             return f"-{s}" if neg else s
         n /= 1024
     return f"{n:.1f} PB"
 
-def fmt_eta(seconds: float) -> str:
+
+def format_eta(seconds: float) -> str:
+    """Format an ETA expressed in seconds into a short human string."""
     if seconds <= 0 or math.isinf(seconds) or math.isnan(seconds):
         return "—"
     m, s = divmod(int(seconds), 60)
     h, m = divmod(m, 60)
-    if h: return f"{h}h {m}m {s}s"
-    if m: return f"{m}m {s}s"
+    if h:
+        return f"{h}h {m}m {s}s"
+    if m:
+        return f"{m}m {s}s"
     return f"{s}s"
 
 @dataclass
@@ -625,6 +636,17 @@ class App(tk.Tk):
             style.theme_use("clam")
         except Exception:
             pass
+        # Custom styles with distinctive colors for clearer feedback
+        style.configure(
+            "Actions.Horizontal.TProgressbar",
+            troughcolor="#E0E0E0",
+            background="#4CAF50",
+        )
+        style.configure(
+            "Bytes.Horizontal.TProgressbar",
+            troughcolor="#E0E0E0",
+            background="#2196F3",
+        )
 
         self.config_path = app_dir() / CONFIG_NAME
         self.log_path = app_dir() / LOG_NAME
@@ -703,11 +725,21 @@ class App(tk.Tk):
 
         # Bottom: progress
         bottom = ttk.Frame(self); bottom.pack(fill="x", **pad)
-        self.progress_actions = ttk.Progressbar(bottom, orient="horizontal", mode="determinate")
+        self.progress_actions = ttk.Progressbar(
+            bottom,
+            orient="horizontal",
+            mode="determinate",
+            style="Actions.Horizontal.TProgressbar",
+        )
         self.progress_actions.pack(fill="x")
-        self.progress_bytes = ttk.Progressbar(bottom, orient="horizontal", mode="determinate")
+        self.progress_bytes = ttk.Progressbar(
+            bottom,
+            orient="horizontal",
+            mode="determinate",
+            style="Bytes.Horizontal.TProgressbar",
+        )
         self.progress_bytes.pack(fill="x", pady=(4,0))
-        self.status_lbl = ttk.Label(bottom, text="Pronto")
+        self.status_lbl = ttk.Label(bottom, text="Pronto", foreground="#555555")
         self.status_lbl.pack(anchor="w")
 
     # ---------- pairs CRUD ----------
@@ -773,8 +805,10 @@ class App(tk.Tk):
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(self.state, f, ensure_ascii=False, indent=2)
             self._log("💾 Configurazione salvata.")
+            self._set_status_message("Configurazione salvata", "#4CAF50")
         except Exception as e:
             self._log(f"❌ Errore salvataggio config: {e}")
+            self._set_status_message("Errore salvataggio config", "#F44336")
 
     def _load_config(self):
         try:
@@ -785,8 +819,10 @@ class App(tk.Tk):
             self.interval_var.set(int(self.state.get("interval", 10)))
             self.retention_var.set(int(self.state.get("retention_days", 30)))
             self._refresh_pairs_list()
+            self._set_status_message("Configurazione caricata", "#4CAF50")
         except Exception as e:
             self._log(f"⚠️  Impossibile leggere la config: {e}")
+            self._set_status_message("Errore lettura config", "#F44336")
 
     # ---------- log & progress ----------
     def _log(self, msg: str):
@@ -836,14 +872,22 @@ class App(tk.Tk):
         except Exception:
             pass
 
-    def _progress(self, done_actions, total_actions, done_bytes, total_bytes):
+    def _set_status_message(self, message: str, color: str = "#000000") -> None:
+        """Update the status label with ``message`` and ``color``."""
+        self.status_lbl.config(text=message, foreground=color)
+
+    def _update_progress_bars(self, done_actions, total_actions, done_bytes, total_bytes) -> None:
+        """Refresh progress bars with the latest counters."""
         self.progress_actions["maximum"] = max(1, total_actions)
         self.progress_actions["value"] = done_actions
         self.progress_bytes["maximum"] = max(1, total_bytes)
         self.progress_bytes["value"] = done_bytes
 
-    def _status(self, rate_bps: float, eta_s: float):
-        self.status_lbl.config(text=f"Trasferiti {human_bytes(int(self.progress_bytes['value']))} / {human_bytes(int(self.progress_bytes['maximum']))}  |  Velocità {human_bytes(int(rate_bps))}/s  |  ETA {fmt_eta(eta_s)}")
+    def _update_transfer_status(self, rate_bps: float, eta_s: float) -> None:
+        """Display transfer speed and ETA information."""
+        self._set_status_message(
+            f"Trasferiti {human_bytes(int(self.progress_bytes['value']))} / {human_bytes(int(self.progress_bytes['maximum']))}  |  Velocità {human_bytes(int(rate_bps))}/s  |  ETA {format_eta(eta_s)}"
+        )
 
     # ---------- sync ----------
     def start_sync(self, pairs: Optional[List[Pair]] = None):
@@ -854,6 +898,7 @@ class App(tk.Tk):
             return
         self._log("▶️  Avvio sincronizzazione…")
         self._notify("Sincronizzazione", "Avviata")
+        self._set_status_message("Sincronizzazione in corso…", "#1E88E5")
         self.stop_event.clear()
         self.pause_event.clear()
         t = threading.Thread(target=self._run_sync_thread, args=(pairs,), daemon=True)
@@ -863,8 +908,8 @@ class App(tk.Tk):
         engine = SyncEngine(
             pairs=pairs,
             log_cb=self._log,
-            progress_cb=self._progress,
-            status_cb=self._status,
+            progress_cb=self._update_progress_bars,
+            status_cb=self._update_transfer_status,
             stop_event=self.stop_event,
             pause_event=self.pause_event,
             settings={"retention_days": int(self.retention_var.get())}
@@ -874,6 +919,7 @@ class App(tk.Tk):
         for p in pairs:
             self.last_run[p.id_hash()] = now
         self._notify("Sincronizzazione", "Completata")
+        self._set_status_message("Sincronizzazione completata", "#4CAF50")
 
     def _is_silent(self, p: Pair) -> bool:
         sh = getattr(p, "silent_hours", "")
