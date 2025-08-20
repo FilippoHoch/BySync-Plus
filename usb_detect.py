@@ -1,13 +1,36 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import subprocess
 import time
 from pathlib import Path
 
-LABEL = "HF_OMNITOOL"
-RELATIVE_EXE = r"Documents\\BySync Plus\\dist\\BiSyncPlus.exe"
+CONFIG_FILE = Path(__file__).with_name("usb_detect_config.json")
+DEFAULT_CFG = {
+    "label": "HF_OMNITOOL",
+    "relative_exe": r"Documents\\BySync Plus\\dist\\BiSyncPlus.exe",
+}
+
+
+def load_config() -> dict[str, str]:
+    cfg = DEFAULT_CFG.copy()
+    try:
+        if CONFIG_FILE.exists():
+            data = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                cfg.update({k: v for k, v in data.items() if isinstance(v, str)})
+        else:
+            CONFIG_FILE.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+    return cfg
+
+
+CFG = load_config()
+LABEL = CFG["label"]
+RELATIVE_EXE = CFG["relative_exe"]
 LOG = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "BiSyncPlus" / "usb-detect.log"
 LOG.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(filename=str(LOG), level=logging.INFO,

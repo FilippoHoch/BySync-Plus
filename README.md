@@ -1,9 +1,9 @@
-# 🔁 BiSync+ – HF_OMNITOOL
+# 🔁 BiSync+ – etichetta USB configurabile (default HF_OMNITOOL)
 
 ![screenshot principale](docs/img/screenshot_main.png)
 
 ## 📖 Descrizione
-**BiSync+** è uno strumento portabile e automatico per la **sincronizzazione bidirezionale** di cartelle, progettato per funzionare direttamente dalla chiavetta USB **HF_OMNITOOL**. Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e offre un’interfaccia grafica semplice e chiara.
+**BiSync+** è uno strumento portabile e automatico per la **sincronizzazione bidirezionale** di cartelle, progettato per funzionare direttamente da una chiavetta USB con etichetta personalizzabile (predefinita **HF_OMNITOOL**). Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e offre un’interfaccia grafica semplice e chiara.
 
 ## Indice
 - [Funzionalità principali](#-funzionalità-principali)
@@ -40,7 +40,7 @@
 - ⚡ **Portabilità totale**:
   - Nessuna dipendenza esterna (solo Python + Tkinter)
   - Pacchettizzabile in un singolo eseguibile con **PyInstaller**
-- 🔌 **Avvio automatico all’inserimento** della chiavetta **HF_OMNITOOL**
+- 🔌 **Avvio automatico all’inserimento** della chiavetta con etichetta configurabile (default **HF_OMNITOOL**)
 - 🖥️ **Icona tray con notifiche desktop**
 
 ## 📷 Screenshot
@@ -53,7 +53,7 @@
 
 ### Setup completo copiando il repository
 1. Installa [Python 3.9+](https://www.python.org/downloads/).
-2. Clona o copia questo repository nella posizione desiderata (ad esempio direttamente sulla chiavetta **HF_OMNITOOL**):
+2. Clona o copia questo repository nella posizione desiderata (ad esempio direttamente sulla chiavetta con etichetta scelta, di default **HF_OMNITOOL**):
    ```bash
    git clone https://github.com/tuo-utente/bisync-plus.git
    cd bisync-plus
@@ -75,13 +75,13 @@ pyinstaller --noconsole --onefile --name BiSyncPlus bisync_plus.py
 
 Troverai `BiSyncPlus.exe` (Windows) o `BiSyncPlus` (macOS/Linux) in `dist/`.
 
-Copia l’eseguibile nella **radice della chiavetta** **HF_OMNITOOL**.
+Copia l’eseguibile nella **radice della chiavetta** (la cui etichetta può essere personalizzata).
 
 ## ⚡ Avvio automatico
 
 Per attivare l'avvio automatico su **Windows**, esegui `USBDetectInstaller.exe` dalla chiavetta. L'installer copia `USBDetect.exe` nella cartella scelta e
 registra l'attività pianificata **"BiSyncPlus USB AutoStart"** che viene avviata
-ad ogni accesso al PC. `USBDetect.exe` controlla l'etichetta **HF_OMNITOOL** e
+ad ogni accesso al PC. `USBDetect.exe` controlla l'etichetta configurata (default **HF_OMNITOOL**) e
 lancia `BiSyncPlus.exe` quando la chiavetta è collegata.
 
 Questo processo sostituisce il precedente script PowerShell (`USB-Detect.ps1`).
@@ -89,7 +89,7 @@ Questo processo sostituisce il precedente script PowerShell (`USB-Detect.ps1`).
 Per motivi di sicurezza, i sistemi operativi non permettono più l'`autorun.inf`.
 Questi sono i metodi supportati:
 
-* **Windows**: eseguibile `USBDetect.exe` + Attività Pianificata (detect etichetta `HF_OMNITOOL`)
+* **Windows**: eseguibile `USBDetect.exe` + Attività Pianificata (detect etichetta configurata, default `HF_OMNITOOL`)
 * **macOS**: regola `launchd`
 * **Linux**: regola `udev`
 
@@ -143,5 +143,5 @@ Aggiungi screenshot, icone, traduzioni o nuove funzionalità.
 
 * 🌐 Integrazione con cloud (Dropbox/Google Drive/OneDrive)
 
-> **BiSync+ – HF_OMNITOOL**: il tuo **coltellino svizzero** per sincronizzazione e backup sicuri, automatici e portabili.
+> **BiSync+**: il tuo **coltellino svizzero** per sincronizzazione e backup sicuri, automatici e portabili.
 

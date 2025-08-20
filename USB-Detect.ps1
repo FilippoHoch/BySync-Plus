@@ -1,8 +1,20 @@
 param([switch]$Silent = $true)
 
 $ErrorActionPreference = "Continue"
-$Label = "HF_OMNITOOL"
-$RelativeExe = "Documents\BySync Plus\dist\BiSyncPlus.exe"
+$DefaultLabel = "HF_OMNITOOL"
+$DefaultRelativeExe = "Documents\BySync Plus\dist\BiSyncPlus.exe"
+$ConfigFile = Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) "usb_detect_config.json"
+$Label = $DefaultLabel
+$RelativeExe = $DefaultRelativeExe
+try {
+  if (Test-Path -LiteralPath $ConfigFile) {
+    $cfg = Get-Content $ConfigFile -Raw | ConvertFrom-Json
+    if ($cfg.label) { $Label = $cfg.label }
+    if ($cfg.relative_exe) { $RelativeExe = $cfg.relative_exe }
+  } else {
+    @{ label = $Label; relative_exe = $RelativeExe } | ConvertTo-Json | Set-Content -Path $ConfigFile
+  }
+} catch {}
 $Log = Join-Path $env:LOCALAPPDATA "BiSyncPlus\usb-detect.log"
 
 # --- Log ---
