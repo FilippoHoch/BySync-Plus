@@ -79,7 +79,13 @@ Copia l’eseguibile nella **radice della chiavetta** **HF_OMNITOOL**.
 
 ## ⚡ Avvio automatico
 
-Per motivi di sicurezza, i sistemi operativi non permettono più l’`autorun.inf`.
+Alla prima esecuzione su **Windows**, l'eseguibile verifica la presenza del
+servizio di avvio automatico e, se assente, installa lo script di controllo USB
+(`USB-Detect.ps1`) registrando l'attività pianificata
+**"BiSyncPlus USB AutoStart"**. Il servizio parte quindi ad ogni accesso al PC;
+se l'attività esiste già, l'installazione viene saltata.
+
+Per motivi di sicurezza, i sistemi operativi non permettono più l'`autorun.inf`.
 Questi sono i metodi supportati:
 
 * **Windows**: script PowerShell + Attività Pianificata (detect etichetta `HF_OMNITOOL`)
