@@ -1,19 +1,19 @@
-# ⚡ Avvio automatico di BiSync+ (HF_OMNITOOL)
+# ⚡ Avvio automatico di BiSync+ (etichetta USB configurabile)
 
-Per motivi di sicurezza, i sistemi operativi moderni **non supportano più autorun diretto** da chiavetta USB.  
-Per questo BiSync+ utilizza un avvio automatico tramite regole di sistema, basate sull’etichetta del volume: **HF_OMNITOOL**.
+Per motivi di sicurezza, i sistemi operativi moderni **non supportano più autorun diretto** da chiavetta USB.
+Per questo BiSync+ utilizza un avvio automatico tramite regole di sistema, basate sull’etichetta del volume (predefinita **HF_OMNITOOL**, ma modificabile).
 
 ---
 
 ## 🪟 Windows
 
 1. **Rinomina la chiavetta**:
-   - Nome etichetta: `HF_OMNITOOL`
+   - Nome etichetta predefinito: `HF_OMNITOOL` (personalizzabile)
 
 2. **Salva questo script** come `USB-Detect.ps1` sul PC:
 
 ```powershell
-   $Label = "HF_OMNITOOL"
+   $Label = "HF_OMNITOOL"  # cambia se usi un'etichetta diversa
    $ExeName = "BiSyncPlus.exe"
 
    while ($true) {
@@ -33,14 +33,14 @@ Per questo BiSync+ utilizza un avvio automatico tramite regole di sistema, basat
    $Script = "C:\Percorso\USB-Detect.ps1"
    $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$Script`""
    $Trigger = New-ScheduledTaskTrigger -AtLogOn
-   Register-ScheduledTask -TaskName "BiSyncPlus USB AutoStart" -Action $Action -Trigger $Trigger -Description "Lancia BiSyncPlus all'inserimento HF_OMNITOOL" -User "$env:UserName"
+   Register-ScheduledTask -TaskName "BiSyncPlus USB AutoStart" -Action $Action -Trigger $Trigger -Description "Lancia BiSyncPlus all'inserimento della chiavetta" -User "$env:UserName"
 ```
 
 ---
 
 ## 🍎 macOS
 
-1. **Rinomina la chiavetta**: `HF_OMNITOOL`
+1. **Rinomina la chiavetta** (default `HF_OMNITOOL`)
 
 2. **Crea un file LaunchAgent** in `~/Library/LaunchAgents/com.bisyncplus.autorun.plist`:
 
@@ -53,7 +53,7 @@ Per questo BiSync+ utilizza un avvio automatico tramite regole di sistema, basat
      <key>StartOnMount</key><true/>
      <key>ProgramArguments</key>
    <array>
-       <string>/Volumes/HF_OMNITOOL/BiSyncPlus</string>
+       <string>/Volumes/IL_TUO_LABEL/BiSyncPlus</string>
        <string>--tray</string>
      </array>
      <key>RunAtLoad</key><true/>
@@ -73,12 +73,12 @@ Da ora in poi, all’inserimento della chiavetta, l’app parte automaticamente.
 
 ## 🐧 Linux (udev)
 
-1. **Rinomina la chiavetta**: `HF_OMNITOOL`
+1. **Rinomina la chiavetta** (default `HF_OMNITOOL`)
 
 2. **Crea una regola udev** in `/etc/udev/rules.d/99-bisyncplus.rules`:
 
    ```
-   ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_LABEL}=="HF_OMNITOOL", RUN+="/usr/local/bin/bisyncplus_autorun.sh"
+   ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_LABEL}=="IL_TUO_LABEL", RUN+="/usr/local/bin/bisyncplus_autorun.sh"
    ```
 
 3. **Crea lo script `/usr/local/bin/bisyncplus_autorun.sh`**:
@@ -86,7 +86,7 @@ Da ora in poi, all’inserimento della chiavetta, l’app parte automaticamente.
    ```bash
    #!/usr/bin/env bash
    sleep 2
-   MOUNTPOINT=$(lsblk -o LABEL,MOUNTPOINT -nr | awk '$1=="HF_OMNITOOL"{print $2}')
+   MOUNTPOINT=$(lsblk -o LABEL,MOUNTPOINT -nr | awk '$1=="IL_TUO_LABEL"{print $2}')
    [ -z "$MOUNTPOINT" ] && exit 0
    "$MOUNTPOINT/BiSyncPlus" --tray &
    ```
@@ -108,7 +108,7 @@ Da ora in poi, all’inserimento della chiavetta, l’app parte automaticamente.
 
 ## ✅ Risultato
 
-Su tutti i sistemi, quando colleghi la chiavetta **HF\_OMNITOOL**, l’app **BiSyncPlus** viene avviata in automatico e inizia a sincronizzare.
+Su tutti i sistemi, quando colleghi la chiavetta con l'etichetta configurata (predefinita **HF_OMNITOOL**), l’app **BiSyncPlus** viene avviata in automatico e inizia a sincronizzare.
 
 
 ---
