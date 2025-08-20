@@ -25,6 +25,7 @@ Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e off
   - velocità media ed ETA
   - pulsanti Avvia, Pausa, Stop
 - ⏱️ **Monitoraggio continuo** (ripete la sync ogni N secondi)
+- 🗓️ **Pianificazione per coppia** con intervalli dedicati e finestre silenziose
 - ⚡ **Portabilità totale**:
   - Nessuna dipendenza esterna (solo Python + Tkinter)
   - Pacchettizzabile in un singolo eseguibile con **PyInstaller**
@@ -142,7 +143,6 @@ Aggiungi screenshot, icone, traduzioni o nuove funzionalità.
 
 ## 📌 TODO / Idee future
 
-* 📅 Pianificazione avanzata per singola coppia
 * 🌐 Integrazione con cloud (Dropbox/Google Drive/OneDrive)
 
 ---
