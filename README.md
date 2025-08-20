@@ -77,6 +77,25 @@ Troverai `BiSyncPlus.exe` (Windows) o `BiSyncPlus` (macOS/Linux) in `dist/`.
 
 Copia l’eseguibile nella **radice della chiavetta** (la cui etichetta può essere personalizzata).
 
+### Altri eseguibili (USBDetect e installer)
+
+Per abilitarne l'avvio automatico su Windows servono due ulteriori eseguibili:
+
+1. **Utility di rilevamento USB**
+   ```bash
+   pyinstaller --noconsole --onefile --name USBDetect usb_detect.py
+   ```
+2. **Installer dell'attività pianificata**
+   ```bash
+   pyinstaller --noconsole --onefile --name USBDetectInstaller usb_detect_installer.py
+   ```
+
+Entrambi saranno creati in `dist/`. Prima di lanciare `USBDetectInstaller.exe` assicurati che
+`USBDetect.exe` si trovi nella **stessa cartella**: l'installer lo copierà nella posizione
+scelta e registrerà l'attività pianificata **"BiSyncPlus USB AutoStart"** che avvia
+`BiSyncPlus.exe` all'inserimento della chiavetta. Copia quindi i due file sulla chiavetta e
+esegui `USBDetectInstaller.exe` sul PC in cui vuoi attivare l'autostart.
+
 ## ⚡ Avvio automatico
 
 Per attivare l'avvio automatico su **Windows**, esegui `USBDetectInstaller.exe` dalla chiavetta. L'installer copia `USBDetect.exe` nella cartella scelta e
