@@ -3,10 +3,21 @@
 ![screenshot principale](docs/img/screenshot_main.png)
 
 ## 📖 Descrizione
-**BiSync+** è uno strumento portabile e automatico per la **sincronizzazione bidirezionale** di cartelle, progettato per funzionare direttamente dalla chiavetta USB **HF_OMNITOOL**.  
-Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e offre un’interfaccia grafica semplice e chiara.
+**BiSync+** è uno strumento portabile e automatico per la **sincronizzazione bidirezionale** di cartelle, progettato per funzionare direttamente dalla chiavetta USB **HF_OMNITOOL**. Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e offre un’interfaccia grafica semplice e chiara.
 
----
+## Indice
+- [Funzionalità principali](#-funzionalità-principali)
+- [Screenshot](#-screenshot)
+- [Installazione](#-installazione)
+  - [Opzione A — Esegui da Python](#opzione-a--esegui-da-python)
+  - [Opzione B — Eseguibile portabile](#opzione-b--eseguibile-portabile)
+- [Avvio automatico](#-avvio-automatico)
+- [Architettura](#-architettura)
+- [Sicurezza](#-sicurezza)
+- [Casi d’uso](#-casi-duso)
+- [Licenza](#-licenza)
+- [Contributi](#-contributi)
+- [TODO / Idee future](#-todo--idee-future)
 
 ## ✨ Funzionalità principali
 
@@ -31,15 +42,11 @@ Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e off
 - 🔌 **Avvio automatico all’inserimento** della chiavetta **HF_OMNITOOL**
 - 🖥️ **Icona tray con notifiche desktop**
 
----
-
 ## 📷 Screenshot
 
 | Gestione coppie | Finestra di configurazione | Anteprima azioni |
 |-----------------|----------------------------|-----------------|
 | ![coppie](docs/img/screenshot_pairs.png) | ![editor](docs/img/screenshot_editor.png) | ![anteprima](docs/img/screenshot_preview.png) |
-
----
 
 ## 🚀 Installazione
 
@@ -49,10 +56,8 @@ Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e off
    ```bash
    git clone https://github.com/tuo-utente/bisync-plus.git
    cd bisync-plus
-```
-
+   ```
 3. Avvia:
-
    ```bash
    pip install pystray plyer Pillow
    python bisync_plus.py
@@ -69,9 +74,7 @@ pyinstaller --noconsole --onefile --name BiSyncPlus bisync_plus.py
 
 Troverai `BiSyncPlus.exe` (Windows) o `BiSyncPlus` (macOS/Linux) in `dist/`.
 
-Copia l’eseguibile nella **radice della chiavetta** **HF\_OMNITOOL**.
-
----
+Copia l’eseguibile nella **radice della chiavetta** **HF_OMNITOOL**.
 
 ## ⚡ Avvio automatico
 
@@ -83,8 +86,6 @@ Questi sono i metodi supportati:
 * **Linux**: regola `udev`
 
 👉 Vedi [docs/autostart.md](docs/autostart.md) per i dettagli.
-
----
 
 ## 📐 Architettura
 
@@ -107,16 +108,12 @@ bisync_plus.py
      └─ .sync_trash/
 ```
 
----
-
 ## 🛡️ Sicurezza
 
 * Mai eliminazioni **dirette** senza conferma: tutto passa per archivio o cestino.
 * Ogni file sovrascritto viene salvato con timestamp in `.sync_archive`.
 * Retention automatica elimina versioni/cestini vecchi oltre N giorni.
 * Snapshots garantiscono che i file nuovi non vengano confusi con file eliminati.
-
----
 
 ## 📊 Casi d’uso
 
@@ -125,26 +122,19 @@ bisync_plus.py
 * Sincronizzazione cartelle documenti/foto
 * Storico versioni automatico
 
----
-
 ## 📜 Licenza
 
 MIT License © 2025 — \[Tuo Nome / Organizzazione]
-
----
 
 ## 🙌 Contributi
 
 Pull request e suggerimenti benvenuti!
 Aggiungi screenshot, icone, traduzioni o nuove funzionalità.
 
----
-
 ## 📌 TODO / Idee future
 
 * 📅 Pianificazione avanzata per singola coppia
 * 🌐 Integrazione con cloud (Dropbox/Google Drive/OneDrive)
 
----
+> **BiSync+ – HF_OMNITOOL**: il tuo **coltellino svizzero** per sincronizzazione e backup sicuri, automatici e portabili.
 
-> **BiSync+ – HF\_OMNITOOL**: il tuo **coltellino svizzero** per sincronizzazione e backup sicuri, automatici e portabili.
