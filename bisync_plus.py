@@ -17,8 +17,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 
+import argparse
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from PIL import Image, ImageDraw
+import pystray
+from pystray import MenuItem as tray_item
+from plyer import notification
 
 APP_NAME = "BiSync+"
 CONFIG_NAME = "bisync_config.json"
@@ -504,7 +509,7 @@ class PairEditor(tk.Toplevel):
         self.destroy()
 
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self, start_hidden: bool = False):
         super().__init__()
         self.title(f"{APP_NAME} – Sync bidirezionale")
         self.geometry("1040x680")
@@ -529,8 +534,12 @@ class App(tk.Tk):
         self.stop_event = threading.Event()
         self.pause_event = threading.Event()
         self.log_queue = queue.Queue()
+        self.tray_icon = None
         self._build_ui()
         self._load_config()
+        if start_hidden:
+            self.withdraw()
+            self._create_tray_icon()
         # avvio auto-sync all'apertura
         self.after(500, self.start_sync)
         self.after(120, self._flush_log_queue)
@@ -689,6 +698,31 @@ class App(tk.Tk):
             pass
         self.after(120, self._flush_log_queue)
 
+    def _tray_image(self) -> Image.Image:
+        img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(img)
+        draw.rectangle((8, 8, 56, 56), fill=(0, 120, 215))
+        return img
+
+    def _create_tray_icon(self):
+        def _show(icon, item):
+            self.deiconify()
+            self.focus_force()
+
+        def _quit(icon, item):
+            icon.stop()
+            self.on_close()
+
+        menu = pystray.Menu(tray_item("Apri", _show), tray_item("Esci", _quit))
+        self.tray_icon = pystray.Icon("bisyncplus", self._tray_image(), APP_NAME, menu)
+        threading.Thread(target=self.tray_icon.run, daemon=True).start()
+
+    def _notify(self, title: str, message: str):
+        try:
+            notification.notify(title=title, message=message, app_name=APP_NAME, timeout=5)
+        except Exception:
+            pass
+
     def _progress(self, done_actions, total_actions, done_bytes, total_bytes):
         self.progress_actions["maximum"] = max(1, total_actions)
         self.progress_actions["value"] = done_actions
@@ -704,6 +738,7 @@ class App(tk.Tk):
             self._log("ℹ️  Nessuna coppia configurata.")
             return
         self._log("▶️  Avvio sincronizzazione…")
+        self._notify("Sincronizzazione", "Avviata")
         self.stop_event.clear()
         self.pause_event.clear()
         t = threading.Thread(target=self._run_sync_thread, daemon=True)
@@ -720,6 +755,7 @@ class App(tk.Tk):
             settings={"retention_days": int(self.retention_var.get())}
         )
         engine.run()
+        self._notify("Sincronizzazione", "Completata")
 
     def _toggle_monitor(self):
         enable = self.monitor_var.get()
@@ -798,9 +834,18 @@ class App(tk.Tk):
 
     def on_close(self):
         self.stop_event.set()
+        if self.tray_icon:
+            try:
+                self.tray_icon.stop()
+            except Exception:
+                pass
         self.destroy()
 
 if __name__ == "__main__":
-    app = App()
+    parser = argparse.ArgumentParser(description=APP_NAME)
+    parser.add_argument("--tray", action="store_true", help="Avvia minimizzato nella tray")
+    args = parser.parse_args()
+
+    app = App(start_hidden=args.tray)
     app.protocol("WM_DELETE_WINDOW", app.on_close)
     app.mainloop()

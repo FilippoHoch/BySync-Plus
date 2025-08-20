@@ -28,6 +28,7 @@ Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e off
   - Nessuna dipendenza esterna (solo Python + Tkinter)
   - Pacchettizzabile in un singolo eseguibile con **PyInstaller**
 - 🔌 **Avvio automatico all’inserimento** della chiavetta **HF_OMNITOOL**
+- 🖥️ **Icona tray con notifiche desktop**
 
 ---
 
@@ -52,6 +53,7 @@ Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e off
 3. Avvia:
 
    ```bash
+   pip install pystray plyer Pillow
    python bisync_plus.py
    ```
 
@@ -139,7 +141,6 @@ Aggiungi screenshot, icone, traduzioni o nuove funzionalità.
 
 ## 📌 TODO / Idee future
 
-* 🔔 Notifiche desktop e icona tray
 * 🗂️ Rilevamento rinomini
 * 📅 Pianificazione avanzata per singola coppia
 * 🌐 Integrazione con cloud (Dropbox/Google Drive/OneDrive)
