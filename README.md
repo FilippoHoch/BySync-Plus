@@ -14,6 +14,7 @@ Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e off
 - 🛡️ **Modalità eliminazioni** configurabile per *singola coppia*:
   - Conservativa: ripristina i file mancanti
   - Propagazione: elimina ovunque i file rimossi (con opzione cestino)
+- 🔁 **Propagazione rinomini** basata su hash dei file
 - 📦 **Archivio versioni** (`.sync_archive`) per i file sovrascritti
 - 🗑️ **Cestino sicuro** (`.sync_trash`) per file eliminati
 - 🕒 **Retention automatica** (es. 30 giorni, configurabile)
@@ -141,7 +142,6 @@ Aggiungi screenshot, icone, traduzioni o nuove funzionalità.
 
 ## 📌 TODO / Idee future
 
-* 🗂️ Rilevamento rinomini
 * 📅 Pianificazione avanzata per singola coppia
 * 🌐 Integrazione con cloud (Dropbox/Google Drive/OneDrive)
 
