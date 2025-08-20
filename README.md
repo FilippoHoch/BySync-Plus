@@ -9,8 +9,8 @@
 - [Funzionalità principali](#-funzionalità-principali)
 - [Screenshot](#-screenshot)
 - [Installazione](#-installazione)
-  - [Opzione A — Esegui da Python](#opzione-a--esegui-da-python)
-  - [Opzione B — Eseguibile portabile](#opzione-b--eseguibile-portabile)
+  - [Setup completo copiando il repository](#setup-completo-copiando-il-repository)
+  - [Eseguibile portabile](#eseguibile-portabile)
 - [Avvio automatico](#-avvio-automatico)
 - [Architettura](#-architettura)
 - [Sicurezza](#-sicurezza)
@@ -51,20 +51,20 @@
 
 ## 🚀 Installazione
 
-### Opzione A — Esegui da Python
-1. Installa [Python 3.9+](https://www.python.org/downloads/)
-2. Clona il repository:
+### Setup completo copiando il repository
+1. Installa [Python 3.9+](https://www.python.org/downloads/).
+2. Clona o copia questo repository nella posizione desiderata (ad esempio direttamente sulla chiavetta **HF_OMNITOOL**):
    ```bash
    git clone https://github.com/tuo-utente/bisync-plus.git
    cd bisync-plus
    ```
-3. Avvia:
+3. Installa le dipendenze richieste e avvia l'applicazione:
    ```bash
    pip install pystray plyer Pillow
    python bisync_plus.py
    ```
 
-### Opzione B — Eseguibile portabile
+### Eseguibile portabile
 
 Crea un eseguibile singolo con [PyInstaller](https://pyinstaller.org/):
 
