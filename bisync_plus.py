@@ -82,7 +82,16 @@ class Snapshot:
     Memorizza l'ultimo stato visto per discernere:
     - file nuovi vs file eliminati
     Struttura:
-    { "rel/path.txt": {"A": mtime_or_None, "B": mtime_or_None, "sizeA": int_or_0, "sizeB": int_or_0} }
+    {
+        "rel/path.txt": {
+            "A": mtime_or_None,
+            "B": mtime_or_None,
+            "sizeA": int_or_0,
+            "sizeB": int_or_0,
+            "hashA": str,
+            "hashB": str,
+        }
+    }
     """
     def __init__(self, pair: Pair):
         self.pair = pair
@@ -118,6 +127,8 @@ class Snapshot:
                 "B": b["mtime"] if b else None,
                 "sizeA": a["size"] if a else 0,
                 "sizeB": b["size"] if b else 0,
+                "hashA": a.get("hash", "") if a else "",
+                "hashB": b.get("hash", "") if b else "",
             }
         payload = json.dumps(out, ensure_ascii=False, indent=0)
         for p in self._paths():
@@ -161,24 +172,41 @@ class SyncEngine:
     def _rel_map(self, root: Path, includes: List[str], excludes: List[str]) -> Dict[str, dict]:
         result: Dict[str, dict] = {}
         for base, dirs, files in os.walk(root):
-            if self.stop.is_set(): break
+            if self.stop.is_set():
+                break
             # ignora dir di sistema nostre
             parts = Path(base).parts
-            if ARCHIVE_DIRNAME in parts or TRASH_DIRNAME in parts: 
+            if ARCHIVE_DIRNAME in parts or TRASH_DIRNAME in parts:
                 continue
             for name in files:
-                p = Path(base)/name
+                p = Path(base) / name
                 try:
-                    if p.is_symlink(): 
+                    if p.is_symlink():
                         continue
                     rel = p.relative_to(root).as_posix()
                     if not self._matches_filters(rel, includes, excludes):
                         continue
                     st = p.stat()
+                    file_hash = self._file_hash(p)
+                    result[rel] = {
+                        "abs": str(p),
+                        "mtime": st.st_mtime,
+                        "size": st.st_size,
+                        "hash": file_hash,
+                    }
                 except Exception:
                     continue
-                result[rel] = {"abs": str(p), "mtime": st.st_mtime, "size": st.st_size}
         return result
+
+    def _file_hash(self, path: Path) -> str:
+        h = hashlib.md5()
+        try:
+            with open(path, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    h.update(chunk)
+        except Exception:
+            return ""
+        return h.hexdigest()
 
     def _archive_existing(self, pair_root: Path, dst_rel: str):
         dst = pair_root / dst_rel
@@ -218,6 +246,12 @@ class SyncEngine:
             self._archive_existing(dst_pair_root, dst_rel)
         shutil.copy2(str(src_abs), str(dst_abs))
 
+    def _safe_move(self, src_abs: Path, dst_abs: Path, pair_root: Path, dst_rel: str):
+        dst_abs.parent.mkdir(parents=True, exist_ok=True)
+        if dst_abs.exists():
+            self._archive_existing(pair_root, dst_rel)
+        shutil.move(str(src_abs), str(dst_abs))
+
     def _cleanup_retention(self, root: Path, dirname: str, days: int):
         if days <= 0: 
             return
@@ -242,12 +276,50 @@ class SyncEngine:
     def _plan_pair(self, pair: Pair, mappingA: Dict[str, dict], mappingB: Dict[str, dict], snap: Snapshot):
         rels = set(mappingA.keys()) | set(mappingB.keys())
         plan = []  # list of tuples: (action, src_abs, dst_abs, size, human, info)
-        # action: "COPY_A2B", "COPY_B2A", "DELETE_A", "DELETE_B"
+
+        # rileva rinomini confrontando hash
+        onlyA = {r: mappingA[r] for r in mappingA.keys() - mappingB.keys()}
+        onlyB = {r: mappingB[r] for r in mappingB.keys() - mappingA.keys()}
+        hashA = {info["hash"]: rel for rel, info in onlyA.items() if info.get("hash")}
+        hashB = {info["hash"]: rel for rel, info in onlyB.items() if info.get("hash")}
+        handled: set = set()
+        for h in set(hashA.keys()) & set(hashB.keys()):
+            relA = hashA[h]
+            relB = hashB[h]
+            prevA = snap.data.get(relA)
+            prevB = snap.data.get(relB)
+            if prevB and not prevA:
+                # rinomina in B per allinearsi ad A
+                plan.append((
+                    "RENAME_B",
+                    Path(pair.right) / relB,
+                    Path(pair.right) / relA,
+                    0,
+                    relA,
+                    {"from": relB},
+                ))
+                handled.update({relA, relB})
+            elif prevA and not prevB:
+                # rinomina in A per allinearsi a B
+                plan.append((
+                    "RENAME_A",
+                    Path(pair.left) / relA,
+                    Path(pair.left) / relB,
+                    0,
+                    relB,
+                    {"from": relA},
+                ))
+                handled.update({relA, relB})
+
+        # action: "COPY_A2B", "COPY_B2A", "DELETE_A", "DELETE_B", "RENAME_A", "RENAME_B"
         for rel in sorted(rels):
-            if self.stop.is_set(): break
+            if rel in handled:
+                continue
+            if self.stop.is_set():
+                break
             a = mappingA.get(rel)
             b = mappingB.get(rel)
-            prev = snap.data.get(rel, {"A": None, "B": None, "sizeA": 0, "sizeB": 0})
+            prev = snap.data.get(rel, {"A": None, "B": None, "sizeA": 0, "sizeB": 0, "hashA": "", "hashB": ""})
 
             if a and not b:
                 # Esiste solo in A
@@ -331,6 +403,12 @@ class SyncEngine:
                 elif action == "DELETE_B":
                     self._to_trash(right_root, rel, pair.use_trash)
                     self.log(f"✖ elimina in B: {rel}")
+                elif action == "RENAME_A":
+                    self._safe_move(Path(src), Path(dst), left_root, rel)
+                    self.log(f"↺ rinomina in A: {extra.get('from')} → {rel}")
+                elif action == "RENAME_B":
+                    self._safe_move(Path(src), Path(dst), right_root, rel)
+                    self.log(f"↺ rinomina in B: {extra.get('from')} → {rel}")
             except Exception as e:
                 self.log(f"❌ Errore su {rel}: {e}")
             finally:
@@ -378,10 +456,14 @@ class SyncEngine:
                 continue
 
             self.log(f"🔁 {A} ↔ {B}  (conservativa={'sì' if pair.conservative else 'no'}, conflitti={pair.conflict_policy})")
-            plan, mapA, mapB = self.dry_run_pair(pair)
+            plan, _, _ = self.dry_run_pair(pair)
 
             # Esecuzione
             self._execute_plan(pair, plan)
+
+            # ricostruisci mapping dopo le azioni (rinomini, copie, ecc.)
+            mapA = self._rel_map(A, pair.include_globs, pair.exclude_globs)
+            mapB = self._rel_map(B, pair.include_globs, pair.exclude_globs)
 
             # Aggiorna snapshot
             snap = Snapshot(pair)
@@ -494,11 +576,20 @@ class PairEditor(tk.Toplevel):
         tv.heading("size", text="Dimensione")
         tv.pack(fill="both", expand=True)
         for action, src, dst, size, rel, extra in plan:
-            if action == "COPY_A2B": a = "Copia A→B"
-            elif action == "COPY_B2A": a = "Copia B→A"
-            elif action == "DELETE_A": a = "Elimina in A"
-            elif action == "DELETE_B": a = "Elimina in B"
-            else: a = action
+            if action == "COPY_A2B":
+                a = "Copia A→B"
+            elif action == "COPY_B2A":
+                a = "Copia B→A"
+            elif action == "DELETE_A":
+                a = "Elimina in A"
+            elif action == "DELETE_B":
+                a = "Elimina in B"
+            elif action == "RENAME_A":
+                a = "Rinomina in A"
+            elif action == "RENAME_B":
+                a = "Rinomina in B"
+            else:
+                a = action
             tv.insert("", "end", values=(a, rel, human_bytes(size)))
         ttk.Button(dlg, text="Chiudi", command=dlg.destroy).pack(pady=6)
 
@@ -808,11 +899,20 @@ class App(tk.Tk):
         for p in pairs:
             plan, _, _ = engine.dry_run_pair(p)
             for action, src, dst, size, rel, extra in plan:
-                if action == "COPY_A2B": a = "A→B"
-                elif action == "COPY_B2A": a = "B→A"
-                elif action == "DELETE_A": a = "Elimina A"
-                elif action == "DELETE_B": a = "Elimina B"
-                else: a = action
+                if action == "COPY_A2B":
+                    a = "A→B"
+                elif action == "COPY_B2A":
+                    a = "B→A"
+                elif action == "DELETE_A":
+                    a = "Elimina A"
+                elif action == "DELETE_B":
+                    a = "Elimina B"
+                elif action == "RENAME_A":
+                    a = "Rinomina A"
+                elif action == "RENAME_B":
+                    a = "Rinomina B"
+                else:
+                    a = action
                 tv.insert("", "end", values=(f"{p.left} ↔ {p.right}", a, rel, human_bytes(size)))
                 total_size += size
                 total_actions += 1
