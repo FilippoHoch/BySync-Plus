@@ -79,16 +79,17 @@ Copia l’eseguibile nella **radice della chiavetta** **HF_OMNITOOL**.
 
 ## ⚡ Avvio automatico
 
-Alla prima esecuzione su **Windows**, l'eseguibile verifica la presenza del
-servizio di avvio automatico e, se assente, installa lo script di controllo USB
-(`USB-Detect.ps1`) registrando l'attività pianificata
-**"BiSyncPlus USB AutoStart"**. Il servizio parte quindi ad ogni accesso al PC;
-se l'attività esiste già, l'installazione viene saltata.
+Per attivare l'avvio automatico su **Windows**, esegui `USBDetectInstaller.exe` dalla chiavetta. L'installer copia `USBDetect.exe` nella cartella scelta e
+registra l'attività pianificata **"BiSyncPlus USB AutoStart"** che viene avviata
+ad ogni accesso al PC. `USBDetect.exe` controlla l'etichetta **HF_OMNITOOL** e
+lancia `BiSyncPlus.exe` quando la chiavetta è collegata.
+
+Questo processo sostituisce il precedente script PowerShell (`USB-Detect.ps1`).
 
 Per motivi di sicurezza, i sistemi operativi non permettono più l'`autorun.inf`.
 Questi sono i metodi supportati:
 
-* **Windows**: script PowerShell + Attività Pianificata (detect etichetta `HF_OMNITOOL`)
+* **Windows**: eseguibile `USBDetect.exe` + Attività Pianificata (detect etichetta `HF_OMNITOOL`)
 * **macOS**: regola `launchd`
 * **Linux**: regola `udev`
 
