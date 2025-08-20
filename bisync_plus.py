@@ -66,6 +66,8 @@ class Pair:
     include_globs: List[str] = field(default_factory=list)   # es: ["*.docx","*.pdf"]
     exclude_globs: List[str] = field(default_factory=lambda: DEFAULT_EXCLUDES.copy())
     notes: str = ""
+    sync_interval: int = 0              # intervallo specifico (s), 0 = usa globale
+    silent_hours: str = ""             # "HH:MM-HH:MM" finestra silenziosa
 
     def normalized(self) -> "Pair":
         # normalizza slash per consistenza
@@ -489,6 +491,8 @@ class PairEditor(tk.Toplevel):
         self.include_var = tk.StringVar(value=",".join(pair.include_globs) if pair and pair.include_globs else "")
         self.exclude_var = tk.StringVar(value=",".join(pair.exclude_globs) if pair and pair.exclude_globs else ",".join(DEFAULT_EXCLUDES))
         self.notes_var = tk.StringVar(value=pair.notes if pair else "")
+        self.interval_var = tk.IntVar(value=pair.sync_interval if pair else 0)
+        self.silent_var = tk.StringVar(value=pair.silent_hours if pair else "")
 
         pad = {"padx": 8, "pady": 6}
         frame = ttk.Frame(self)
@@ -524,12 +528,20 @@ class PairEditor(tk.Toplevel):
         ttk.Label(filt, text="Exclude").grid(row=1, column=0, sticky="e")
         ttk.Entry(filt, textvariable=self.exclude_var, width=60).grid(row=1, column=1, sticky="we")
 
+        # Schedule
+        sched = ttk.LabelFrame(frame, text="Pianificazione")
+        sched.grid(row=5, column=0, columnspan=3, sticky="we", pady=(4,4))
+        ttk.Label(sched, text="Intervallo (s, 0=default)").grid(row=0, column=0, sticky="e")
+        ttk.Spinbox(sched, from_=0, to=86400, textvariable=self.interval_var, width=8).grid(row=0, column=1, sticky="w")
+        ttk.Label(sched, text="Finestra silenziosa HH:MM-HH:MM").grid(row=1, column=0, sticky="e")
+        ttk.Entry(sched, textvariable=self.silent_var, width=20).grid(row=1, column=1, sticky="w")
+
         # Notes
-        ttk.Label(frame, text="Note").grid(row=5, column=0, sticky="ne")
-        ttk.Entry(frame, textvariable=self.notes_var, width=70).grid(row=5, column=1, columnspan=2, sticky="we")
+        ttk.Label(frame, text="Note").grid(row=6, column=0, sticky="ne")
+        ttk.Entry(frame, textvariable=self.notes_var, width=70).grid(row=6, column=1, columnspan=2, sticky="we")
 
         # Buttons
-        btns = ttk.Frame(frame); btns.grid(row=6, column=0, columnspan=3, sticky="e", pady=(8,0))
+        btns = ttk.Frame(frame); btns.grid(row=7, column=0, columnspan=3, sticky="e", pady=(8,0))
         ttk.Button(btns, text="Anteprima", command=self._preview).pack(side="left", padx=4)
         ttk.Button(btns, text="Salva", command=self._save).pack(side="left", padx=4)
         ttk.Button(btns, text="Annulla", command=self.destroy).pack(side="left", padx=4)
@@ -559,7 +571,9 @@ class PairEditor(tk.Toplevel):
         exc = [s.strip() for s in self.exclude_var.get().split(",") if s.strip()]
         return Pair(
             left=a, right=b, conservative=self.cons_var.get(), use_trash=self.trash_var.get(),
-            conflict_policy=self.policy_var.get(), include_globs=inc, exclude_globs=exc, notes=self.notes_var.get()
+            conflict_policy=self.policy_var.get(), include_globs=inc, exclude_globs=exc,
+            notes=self.notes_var.get(), sync_interval=int(self.interval_var.get()),
+            silent_hours=self.silent_var.get().strip()
         )
 
     def _preview(self):
@@ -626,6 +640,7 @@ class App(tk.Tk):
         self.pause_event = threading.Event()
         self.log_queue = queue.Queue()
         self.tray_icon = None
+        self.last_run: Dict[str, float] = {}
         self._build_ui()
         self._load_config()
         if start_hidden:
@@ -663,13 +678,14 @@ class App(tk.Tk):
 
         leftpane = ttk.Frame(mid); mid.add(leftpane, weight=1)
         ttk.Label(leftpane, text="Coppie configurate").pack(anchor="w")
-        cols = ("A","B","cons","policy","filters","notes")
+        cols = ("A","B","cons","policy","filters","sched","notes")
         self.pairs_tv = ttk.Treeview(leftpane, columns=cols, show="headings", height=8)
         self.pairs_tv.heading("A", text="Cartella A")
         self.pairs_tv.heading("B", text="Cartella B")
         self.pairs_tv.heading("cons", text="Conservativa")
         self.pairs_tv.heading("policy", text="Conflitti")
         self.pairs_tv.heading("filters", text="Filtri")
+        self.pairs_tv.heading("sched", text="Pianifica")
         self.pairs_tv.heading("notes", text="Note")
         self.pairs_tv.pack(fill="both", expand=True, pady=(4,6))
 
@@ -711,7 +727,13 @@ class App(tk.Tk):
             filters = ""
             if p.include_globs: filters += "inc:" + ";".join(p.include_globs) + " "
             if p.exclude_globs: filters += "exc:" + ";".join(p.exclude_globs)
-            self.pairs_tv.insert("", "end", values=(p.left, p.right, "sì" if p.conservative else "no", p.conflict_policy, filters.strip(), p.notes))
+            sched = ""
+            if getattr(p, "sync_interval", 0):
+                sched += f"{p.sync_interval}s"
+            if getattr(p, "silent_hours", ""):
+                if sched: sched += " "
+                sched += f"sil:{p.silent_hours}"
+            self.pairs_tv.insert("", "end", values=(p.left, p.right, "sì" if p.conservative else "no", p.conflict_policy, filters.strip(), sched.strip(), p.notes))
 
     def _add_pair(self):
         def on_save(pair: Pair):
@@ -824,20 +846,22 @@ class App(tk.Tk):
         self.status_lbl.config(text=f"Trasferiti {human_bytes(int(self.progress_bytes['value']))} / {human_bytes(int(self.progress_bytes['maximum']))}  |  Velocità {human_bytes(int(rate_bps))}/s  |  ETA {fmt_eta(eta_s)}")
 
     # ---------- sync ----------
-    def start_sync(self):
-        if not self.state.get("pairs"):
+    def start_sync(self, pairs: Optional[List[Pair]] = None):
+        if pairs is None:
+            pairs = self._pairs_from_state()
+        if not pairs:
             self._log("ℹ️  Nessuna coppia configurata.")
             return
         self._log("▶️  Avvio sincronizzazione…")
         self._notify("Sincronizzazione", "Avviata")
         self.stop_event.clear()
         self.pause_event.clear()
-        t = threading.Thread(target=self._run_sync_thread, daemon=True)
+        t = threading.Thread(target=self._run_sync_thread, args=(pairs,), daemon=True)
         t.start()
 
-    def _run_sync_thread(self):
+    def _run_sync_thread(self, pairs: List[Pair]):
         engine = SyncEngine(
-            pairs=self._pairs_from_state(),
+            pairs=pairs,
             log_cb=self._log,
             progress_cb=self._progress,
             status_cb=self._status,
@@ -846,7 +870,26 @@ class App(tk.Tk):
             settings={"retention_days": int(self.retention_var.get())}
         )
         engine.run()
+        now = time.time()
+        for p in pairs:
+            self.last_run[p.id_hash()] = now
         self._notify("Sincronizzazione", "Completata")
+
+    def _is_silent(self, p: Pair) -> bool:
+        sh = getattr(p, "silent_hours", "")
+        if not sh:
+            return False
+        try:
+            start_s, end_s = sh.split("-")
+            now = datetime.now().time()
+            t0 = datetime.strptime(start_s.strip(), "%H:%M").time()
+            t1 = datetime.strptime(end_s.strip(), "%H:%M").time()
+            if t0 < t1:
+                return t0 <= now < t1
+            else:
+                return now >= t0 or now < t1
+        except Exception:
+            return False
 
     def _toggle_monitor(self):
         enable = self.monitor_var.get()
@@ -860,11 +903,22 @@ class App(tk.Tk):
 
     def _monitor_loop(self):
         while self.monitor_var.get():
-            if self.stop_event.is_set():
-                self.stop_event.clear()
-            self.start_sync()
-            for _ in range(int(self.interval_var.get()*10)):
-                if not self.monitor_var.get(): 
+            due: List[Pair] = []
+            now = time.time()
+            for p in self._pairs_from_state():
+                interval = getattr(p, "sync_interval", 0) or int(self.interval_var.get())
+                last = self.last_run.get(p.id_hash(), 0)
+                if now - last < interval:
+                    continue
+                if self._is_silent(p):
+                    continue
+                due.append(p)
+            if due:
+                if self.stop_event.is_set():
+                    self.stop_event.clear()
+                self.start_sync(due)
+            for _ in range(10):
+                if not self.monitor_var.get():
                     return
                 time.sleep(0.1)
 
