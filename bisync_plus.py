@@ -12,8 +12,6 @@ import queue
 import shutil
 import hashlib
 import threading
-import platform
-import subprocess
 from dataclasses import dataclass, asdict, field
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -35,144 +33,6 @@ MTIME_FUZZ = 1.0  # secondi di tolleranza su mtime
 DEFAULT_EXCLUDES = ["*.tmp", "*.temp", "*.swp", "Thumbs.db", ".DS_Store", "desktop.ini"]
 ARCHIVE_DIRNAME = ".sync_archive"
 TRASH_DIRNAME = ".sync_trash"
-
-# Script PowerShell per monitorare l'inserimento della chiavetta HF_OMNITOOL
-# e avviare automaticamente BiSyncPlus.
-USB_DETECT_PS1 = r'''param([switch]$Silent = $true)
-
-$ErrorActionPreference = "Continue"
-$Label = "HF_OMNITOOL"
-$RelativeExe = "Documents\\BySync Plus\\dist\\BiSyncPlus.exe"
-$Log = Join-Path $env:LOCALAPPDATA "BiSyncPlus\\usb-detect.log"
-
-# --- Log ---
-New-Item -ItemType Directory -Path (Split-Path $Log) -Force | Out-Null
-function Log([string]$msg){ Add-Content -Path $Log -Value "[{0}] {1}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $msg }
-
-# --- no doppie istanze dello script ---
-Add-Type -AssemblyName System.Threading
-$mutex = New-Object System.Threading.Mutex($false, "Global\\USBDetect_BiSyncPlus")
-if(-not $mutex.WaitOne(0)){ Log "Istanza già in esecuzione"; exit }
-
-# (opzionale) notifiche
-if(-not $Silent){
-  Add-Type -AssemblyName System.Windows.Forms
-  Add-Type -AssemblyName System.Drawing
-  $notify = New-Object System.Windows.Forms.NotifyIcon
-  $notify.Icon = [System.Drawing.SystemIcons]::Information
-  $notify.Visible = $true
-  $notify.BalloonTipTitle = "BiSyncPlus AutoStart"
-  function Tip($t){ $notify.BalloonTipText = $t; $notify.ShowBalloonTip(2500) }
-}else{ function Tip($t){} }
-
-function Get-UsbVolume(){ Get-CimInstance Win32_Volume -Filter "Label='$Label' AND DriveType=2" -ErrorAction SilentlyContinue }
-function Get-ExePath([string]$drive){ Join-Path $drive $RelativeExe }
-
-# Evita di rilanciare se il processo è già in esecuzione con LO STESSO percorso
-function Is-AppRunning([string]$fullPath){
-  $name = [System.IO.Path]::GetFileNameWithoutExtension($fullPath)
-  try{
-    Get-Process -Name $name -ErrorAction SilentlyContinue |
-      Where-Object { $_.Path -and ( $_.Path -ieq $fullPath ) } | ForEach-Object { return $true }
-  }catch{}
-  return $false
-}
-
-function Start-BiSyncPlus([string]$drive){
-  $exe = Get-ExePath $drive
-  Log "Check EXE: $exe"
-  if(Test-Path -LiteralPath $exe){
-    if(Is-AppRunning $exe){
-      Log "Già in esecuzione: $exe"
-      return
-    }
-    try{
-      Start-Process -FilePath $exe -ArgumentList "--tray" -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden
-      Log "Avviato: $exe"
-      Tip "Avviato BiSyncPlus"
-    }catch{
-      Log ("Errore avvio: " + $_.Exception.Message)
-      Tip "Errore avvio BiSyncPlus"
-    }
-  } else {
-    Log "EXE non trovato: $exe"
-    Tip "EXE non trovato"
-  }
-}
-
-# --- AVVIO IMMEDIATO SE GIÀ COLLEGATA ---
-try{
-  $vol = Get-UsbVolume
-  if($vol){
-    Log "Volume già presente: $($vol.DriveLetter)"
-    Start-BiSyncPlus $vol.DriveLetter
-  } else {
-    Log "Volume non presente al lancio"
-  }
-}catch{ Log ("Errore check iniziale: " + $_.Exception.Message) }
-
-# --- LISTENER EVENTI WMI (plug/unplug) ---
-$query = "SELECT * FROM Win32_VolumeChangeEvent WHERE EventType=2 OR EventType=3"
-$watcher = New-Object System.Management.ManagementEventWatcher $query
-Log "Watcher WMI attivo per '$Label'"
-Tip "Watcher attivo per $Label"
-
-try{
-  while($true){
-    $ev = $watcher.WaitForNextEvent()  # blocca finché evento
-    Start-Sleep -Milliseconds 400
-    try{
-      $vol = Get-UsbVolume
-      if($vol){
-        Log "Evento: collegato $($vol.DriveLetter)"
-        Start-BiSyncPlus $vol.DriveLetter
-        do { Start-Sleep -Seconds 1 } while (Get-UsbVolume)
-        Log "Evento: scollegato"
-      }
-    }catch{ Log ("Errore gestione evento: " + $_.Exception.Message) }
-  }
-} finally {
-  try{ $watcher.Stop(); $watcher.Dispose() }catch{}
-  try{ $mutex.ReleaseMutex() | Out-Null }catch{}
-}
-'''
-
-
-def ensure_windows_autostart() -> None:
-    """Installa automaticamente lo script di rilevamento USB come
-    attività pianificata su Windows."""
-    if platform.system() != "Windows":
-        return
-    try:
-        task_name = "BiSyncPlus USB AutoStart"
-        script_dir = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "BiSyncPlus"
-        script_dir.mkdir(parents=True, exist_ok=True)
-        script_path = script_dir / "USB-Detect.ps1"
-        if not script_path.exists():
-            script_path.write_text(USB_DETECT_PS1, encoding="utf-8")
-        result = subprocess.run(
-            ["schtasks", "/Query", "/TN", task_name],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        if result.returncode != 0:
-            ps_args = f'-NoProfile -ExecutionPolicy Bypass -File "{script_path}"'
-            subprocess.run(
-                [
-                    "schtasks",
-                    "/Create",
-                    "/SC",
-                    "ONLOGON",
-                    "/TN",
-                    task_name,
-                    "/TR",
-                    f"powershell.exe {ps_args}",
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-    except Exception:
-        pass
 
 def app_dir() -> Path:
     return Path(__file__).resolve().parent
@@ -1139,8 +999,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=APP_NAME)
     parser.add_argument("--tray", action="store_true", help="Avvia minimizzato nella tray")
     args = parser.parse_args()
-
-    ensure_windows_autostart()
 
     app = App(start_hidden=args.tray)
     app.protocol("WM_DELETE_WINDOW", app.on_close)
