@@ -1,146 +1,149 @@
-# 📂 Progetto **BiSync+ – HF\_OMNITOOL**
+# 🔁 BiSync+ – HF_OMNITOOL
 
-## 🎯 Obiettivo
+![screenshot principale](docs/img/screenshot_main.png)
 
-Realizzare uno strumento portabile, automatico e facile da usare che permetta di **sincronizzare bidirezionalmente** cartelle tra la chiavetta USB **HF\_OMNITOOL** e uno o più percorsi locali/remoti, garantendo:
-
-* sicurezza (nessuna perdita dati, archiviazione versioni e cestino);
-* flessibilità (scelta di modalità diverse per ciascuna coppia di cartelle);
-* immediatezza (partenza automatica all’inserimento della chiavetta, interfaccia grafica semplice, anteprima delle operazioni).
+## 📖 Descrizione
+**BiSync+** è uno strumento portabile e automatico per la **sincronizzazione bidirezionale** di cartelle, progettato per funzionare direttamente dalla chiavetta USB **HF_OMNITOOL**.  
+Mantiene cartelle allineate, gestisce conflitti, salva versioni precedenti e offre un’interfaccia grafica semplice e chiara.
 
 ---
 
-## ⚙️ Funzionalità principali
+## ✨ Funzionalità principali
 
-### 🔁 Sincronizzazione bidirezionale
-
-* Mantiene **allineate due cartelle** (lato A e lato B).
-* Le modifiche su un lato vengono replicate nell’altro.
-* In caso di conflitto (file modificato in entrambe le parti), si applica la politica configurata:
-
-  * **Più recente vince** (default).
-  * **Preferisci A**.
-  * **Preferisci B**.
-
-### 🛡️ Modalità eliminazioni (per singola coppia)
-
-* **Conservativa (default)**: se un file manca su un lato, viene **ripristinato** dall’altro (evita perdite accidentali).
-* **Propagazione eliminazioni**: se un file viene eliminato su un lato, viene eliminato anche sull’altro.
-
-  * Opzione di sicurezza: spostamento nel **cestino interno** (`.sync_trash`) invece della cancellazione diretta.
-
-### 🗄️ Gestione versioni e sicurezza
-
-* I file sovrascritti vengono spostati in un **archivio versioni** (`.sync_archive`).
-* **Retention configurabile** (es. elimina automaticamente archivi/cestini più vecchi di 30 giorni).
-* Snapshot di stato interno (file nascosto `.bisync_state_xxx.json`) per rilevare correttamente file eliminati vs file nuovi.
-
-### 👁️ Anteprima operazioni (Dry-run)
-
-* Prima di avviare la sincronizzazione, l’utente può vedere:
-
-  * quali file saranno copiati e dove;
-  * quali file verranno eliminati o archiviati;
-  * il volume totale di dati e il numero di azioni.
-
-### 📊 Interfaccia grafica
-
-* **Gestione coppie cartelle** tramite finestra dedicata:
-
-  * percorso A e B con selezione tramite “Sfoglia”;
-  * filtri `include`/`exclude` (pattern glob tipo `*.docx, *.pdf`);
-  * note descrittive per l’utente;
-  * selezione politica conflitti;
-  * scelta modalità conservativa o propagazione eliminazioni.
-* **Monitoraggio sincronizzazione**:
-
-  * barra di avanzamento azioni e byte;
-  * log in tempo reale;
-  * indicazione velocità media e tempo stimato (ETA).
-* **Controlli**:
-
-  * Avvio sincronizzazione manuale.
-  * Anteprima completa.
-  * Pausa/Riprendi/Stop.
-  * Esportazione log.
-
-### ⏱️ Modalità monitoraggio continuo
-
-* Opzione per mantenere la sincronizzazione attiva ogni *N* secondi.
-* Intervallo configurabile (es. ogni 10 secondi, ogni 5 minuti, ecc.).
-
-### 📦 Portabilità
-
-* Progetto scritto in **Python 3** con GUI **Tkinter** (nessuna dipendenza esterna).
-* Pacchettizzabile in eseguibile singolo (`BiSyncPlus.exe` / `BiSyncPlus`) con **PyInstaller**.
-* Tutti i dati di configurazione e log sono salvati accanto all’eseguibile sulla chiavetta:
-
-  * `bisync_config.json` → configurazioni coppie.
-  * `bisync_log.txt` → log storico.
-  * `.sync_archive` e `.sync_trash` → sicurezza file.
-  * `.bisync_state_xxx.json` → snapshot interno per ogni coppia.
-
-### ⚡ Avvio automatico all’inserimento
-
-* L’eseguibile viene avviato automaticamente quando si inserisce la chiavetta **HF\_OMNITOOL**:
-
-  * **Windows**: script PowerShell + attività pianificata.
-  * **macOS**: regola `launchd`.
-  * **Linux**: regola `udev`.
+- 🔄 **Sync bidirezionale** (PC ↔ USB o qualsiasi altra coppia di cartelle)
+- 🛡️ **Modalità eliminazioni** configurabile per *singola coppia*:
+  - Conservativa: ripristina i file mancanti
+  - Propagazione: elimina ovunque i file rimossi (con opzione cestino)
+- 📦 **Archivio versioni** (`.sync_archive`) per i file sovrascritti
+- 🗑️ **Cestino sicuro** (`.sync_trash`) per file eliminati
+- 🕒 **Retention automatica** (es. 30 giorni, configurabile)
+- 👁️ **Anteprima (dry-run)** delle azioni prima di eseguire la sincronizzazione
+- 📊 **Interfaccia grafica** con:
+  - log in tempo reale
+  - barra di avanzamento
+  - velocità media ed ETA
+  - pulsanti Avvia, Pausa, Stop
+- ⏱️ **Monitoraggio continuo** (ripete la sync ogni N secondi)
+- ⚡ **Portabilità totale**:
+  - Nessuna dipendenza esterna (solo Python + Tkinter)
+  - Pacchettizzabile in un singolo eseguibile con **PyInstaller**
+- 🔌 **Avvio automatico all’inserimento** della chiavetta **HF_OMNITOOL**
 
 ---
 
-## 📐 Architettura tecnica
+## 📷 Screenshot
 
-1. **Core di sincronizzazione (SyncEngine)**:
-
-   * Scansiona entrambe le cartelle (A, B).
-   * Applica filtri di include/exclude.
-   * Confronta lo stato attuale con lo snapshot precedente.
-   * Genera un **piano di azioni** (copy A→B, copy B→A, delete A, delete B).
-   * Esegue le operazioni rispettando le opzioni (archivio/cestino).
-   * Aggiorna snapshot per la successiva esecuzione.
-
-2. **GUI (Tkinter)**:
-
-   * Gestione coppie cartelle e configurazioni.
-   * Monitoraggio avanzamento e log.
-   * Anteprima azioni.
-
-3. **Automazione avvio**:
-
-   * Rilevamento etichetta chiavetta (**HF\_OMNITOOL**).
-   * Avvio trasparente dell’eseguibile.
+| Gestione coppie | Finestra di configurazione | Anteprima azioni |
+|-----------------|----------------------------|-----------------|
+| ![coppie](docs/img/screenshot_pairs.png) | ![editor](docs/img/screenshot_editor.png) | ![anteprima](docs/img/screenshot_preview.png) |
 
 ---
 
-## 🔒 Sicurezza & Robustezza
+## 🚀 Installazione
 
-* **Nessuna eliminazione diretta** se non esplicitamente richiesto dall’utente.
-* File sovrascritti/eliminati sempre salvati in area sicura con timestamp.
-* File speciali e link simbolici ignorati per evitare cicli e inconsistenze.
-* Compatibile con filesystem Windows, macOS, Linux.
-* Gestione crash/stop → ripartenza senza corruzione dati (grazie a snapshot).
+### Opzione A — Esegui da Python
+1. Installa [Python 3.9+](https://www.python.org/downloads/)
+2. Clona il repository:
+   ```bash
+   git clone https://github.com/tuo-utente/bisync-plus.git
+   cd bisync-plus
+```
+
+3. Avvia:
+
+   ```bash
+   python bisync_plus.py
+   ```
+
+### Opzione B — Eseguibile portabile
+
+Crea un eseguibile singolo con [PyInstaller](https://pyinstaller.org/):
+
+```bash
+pip install pyinstaller
+pyinstaller --noconsole --onefile --name BiSyncPlus bisync_plus.py
+```
+
+Troverai `BiSyncPlus.exe` (Windows) o `BiSyncPlus` (macOS/Linux) in `dist/`.
+
+Copia l’eseguibile nella **radice della chiavetta** **HF\_OMNITOOL**.
 
 ---
 
-## 🚀 Casi d’uso tipici
+## ⚡ Avvio automatico
 
-* Tenere allineata una cartella di lavoro tra **PC e chiavetta**.
-* Backup bidirezionale di documenti, progetti o foto.
-* Condivisione sicura di cartelle tra **PC diversi** usando la chiavetta come ponte.
-* Archiviazione storica automatica delle versioni modificate.
+Per motivi di sicurezza, i sistemi operativi non permettono più l’`autorun.inf`.
+Questi sono i metodi supportati:
 
----
+* **Windows**: script PowerShell + Attività Pianificata (detect etichetta `HF_OMNITOOL`)
+* **macOS**: regola `launchd`
+* **Linux**: regola `udev`
 
-## 📊 Vantaggi
-
-* Portabile (gira ovunque senza installazione).
-* Sicuro (archivio, cestino, snapshot).
-* Personalizzabile (filtri, politiche, retention, modalità).
-* Automatizzato (parte da solo con la chiavetta).
-* Trasparente (log dettagliato, anteprima, interfaccia chiara).
+👉 Vedi [docs/autostart.md](docs/autostart.md) per i dettagli.
 
 ---
 
-👉 In sintesi: **BiSync+ (HF\_OMNITOOL)** è un **gestore di sincronizzazione intelligente e sicuro**, progettato per chi vuole un backup bidirezionale automatizzato con controllo totale e interfaccia intuitiva.
+## 📐 Architettura
+
+```
+bisync_plus.py
+ ├─ GUI (Tkinter)
+ │   ├─ gestione coppie cartelle
+ │   ├─ log, progress bar, controlli
+ │   └─ anteprima sync
+ ├─ Core (SyncEngine)
+ │   ├─ confronto cartelle
+ │   ├─ generazione piano azioni
+ │   └─ esecuzione (copy / delete / archive / trash)
+ ├─ Snapshot
+ │   └─ .bisync_state_xxx.json (rileva eliminazioni)
+ └─ Config & Log
+     ├─ bisync_config.json
+     ├─ bisync_log.txt
+     ├─ .sync_archive/
+     └─ .sync_trash/
+```
+
+---
+
+## 🛡️ Sicurezza
+
+* Mai eliminazioni **dirette** senza conferma: tutto passa per archivio o cestino.
+* Ogni file sovrascritto viene salvato con timestamp in `.sync_archive`.
+* Retention automatica elimina versioni/cestini vecchi oltre N giorni.
+* Snapshots garantiscono che i file nuovi non vengano confusi con file eliminati.
+
+---
+
+## 📊 Casi d’uso
+
+* Backup bidirezionale tra **PC e USB**
+* Trasporto progetti tra più PC
+* Sincronizzazione cartelle documenti/foto
+* Storico versioni automatico
+
+---
+
+## 📜 Licenza
+
+MIT License © 2025 — \[Tuo Nome / Organizzazione]
+
+---
+
+## 🙌 Contributi
+
+Pull request e suggerimenti benvenuti!
+Aggiungi screenshot, icone, traduzioni o nuove funzionalità.
+
+---
+
+## 📌 TODO / Idee future
+
+* 🔔 Notifiche desktop e icona tray
+* 🗂️ Rilevamento rinomini
+* 📅 Pianificazione avanzata per singola coppia
+* 🌐 Integrazione con cloud (Dropbox/Google Drive/OneDrive)
+
+---
+
+> **BiSync+ – HF\_OMNITOOL**: il tuo **coltellino svizzero** per sincronizzazione e backup sicuri, automatici e portabili.
