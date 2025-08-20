@@ -47,7 +47,7 @@ function Start-BiSyncPlus([string]$drive){
       return
     }
     try{
-      Start-Process -FilePath $exe -WorkingDirectory (Split-Path $exe) -WindowStyle Normal
+      Start-Process -FilePath $exe -ArgumentList "--tray" -WorkingDirectory (Split-Path $exe) -WindowStyle Hidden
       Log "Avviato: $exe"
       Tip "Avviato BiSyncPlus"
     }catch{

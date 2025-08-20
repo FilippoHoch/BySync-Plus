@@ -20,7 +20,7 @@ Per questo BiSync+ utilizza un avvio automatico tramite regole di sistema, basat
      $vol = Get-CimInstance -ClassName Win32_Volume -Filter "Label='$Label' AND DriveType=2" -ErrorAction SilentlyContinue
      if ($vol) {
        $path = Join-Path $vol.DriveLetter $ExeName
-       if (Test-Path $path) { Start-Process -FilePath $path }
+       if (Test-Path $path) { Start-Process -FilePath $path -ArgumentList '--tray' }
        do { Start-Sleep -Seconds 2 } while (Get-CimInstance -ClassName Win32_Volume -Filter "Label='$Label' AND DriveType=2" -ErrorAction SilentlyContinue)
      }
      Start-Sleep -Seconds 2
@@ -52,8 +52,9 @@ Per questo BiSync+ utilizza un avvio automatico tramite regole di sistema, basat
      <key>Label</key><string>com.bisyncplus.autorun</string>
      <key>StartOnMount</key><true/>
      <key>ProgramArguments</key>
-     <array>
+   <array>
        <string>/Volumes/HF_OMNITOOL/BiSyncPlus</string>
+       <string>--tray</string>
      </array>
      <key>RunAtLoad</key><true/>
    </dict>
@@ -87,7 +88,7 @@ Da ora in poi, all’inserimento della chiavetta, l’app parte automaticamente.
    sleep 2
    MOUNTPOINT=$(lsblk -o LABEL,MOUNTPOINT -nr | awk '$1=="HF_OMNITOOL"{print $2}')
    [ -z "$MOUNTPOINT" ] && exit 0
-   "$MOUNTPOINT/BiSyncPlus" &
+   "$MOUNTPOINT/BiSyncPlus" --tray &
    ```
 
    Rendi eseguibile:
